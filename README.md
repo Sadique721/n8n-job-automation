@@ -143,7 +143,7 @@ docker compose up -d
 
 ### 2. Configure Dashboard Credentials
 Access **`http://localhost:5678`** in your browser and enter n8n account settings.
-Import `AI Job Search_ Resume → Scored Job Matches.json` and configure credentials:
+Import `AI_Job_Search_Resume_Scored_Job_Matches.json` and configure credentials:
 * **Google Gemini API**: Paste your Gemini API key.
 * **Telegram Bot API**: Paste your Telegram bot token.
 * **SMTP Node**: Enter your Gmail username and app password.

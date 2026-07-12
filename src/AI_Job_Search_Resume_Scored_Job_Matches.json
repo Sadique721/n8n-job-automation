@@ -68,6 +68,7 @@
       "id": "telegram-start-id",
       "name": "Telegram: Workflow Started",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         600,
@@ -130,6 +131,7 @@
       "id": "telegram-resume-parsed-id",
       "name": "Telegram: Resume Analysed",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         1000,
@@ -578,6 +580,7 @@
       "id": "telegram-jobs-found-id",
       "name": "Telegram: Jobs Found",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         2300,
@@ -672,6 +675,7 @@
       "id": "telegram-no-jobs-id",
       "name": "Telegram: No Jobs Found",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         2900,
@@ -792,6 +796,7 @@
       "id": "telegram-high-match-id",
       "name": "Telegram: High Match Jobs",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         3700,
@@ -895,6 +900,7 @@
       "id": "telegram-resume-tailored-id",
       "name": "Telegram: Resume Tailored",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         4700,
@@ -941,6 +947,7 @@
       "id": "telegram-workflow-finished-id",
       "name": "Telegram: Workflow Finished",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         4100,
@@ -975,6 +982,7 @@
       "id": "telegram-error-notifier-id",
       "name": "Telegram: Error Notifier",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         200,

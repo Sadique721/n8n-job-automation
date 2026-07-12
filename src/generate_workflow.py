@@ -1,4 +1,5 @@
 import json
+import os
 
 def get_main_workflow():
     nodes = [
@@ -1436,10 +1437,13 @@ def main():
     main_wf["id"] = "1"
     followup_wf["id"] = "2"
     
-    with open('AI Job Search_ Resume → Scored Job Matches.json', 'w', encoding='utf-8') as f:
+    out_dir = os.path.dirname(__file__)
+    main_path = os.path.join(out_dir, 'AI_Job_Search_Resume_Scored_Job_Matches.json')
+    with open(main_path, 'w', encoding='utf-8') as f:
         json.dump(main_wf, f, indent=2, ensure_ascii=False)
         
-    with open('Follow_Up_Automation.json', 'w', encoding='utf-8') as f:
+    followup_path = os.path.join(out_dir, 'Follow_Up_Automation.json')
+    with open(followup_path, 'w', encoding='utf-8') as f:
         json.dump(followup_wf, f, indent=2, ensure_ascii=False)
 
     print("Successfully generated n8n workflow files.")

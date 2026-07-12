@@ -96,6 +96,7 @@
       "id": "telegram-followup-sent-id",
       "name": "Telegram: Followup Sent",
       "type": "n8n-nodes-base.telegram",
+      "continueOnFail": true,
       "typeVersion": 1.2,
       "position": [
         1000,
