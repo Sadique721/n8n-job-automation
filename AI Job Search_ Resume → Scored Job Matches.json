@@ -1,0 +1,1564 @@
+{
+  "name": "AI Job Search: Resume → Scored Job Matches",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger-id",
+      "name": "Manual Test",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-id",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nlet config = {};\ntry {\n  const dataDir = process.env.DATA_DIR || (process.platform === 'win32' ? 'D:/AI Job Automation' : '/data');\n  const configPath = path.join(dataDir, 'Config/config.json');\n  if (fs.existsSync(configPath)) {\n    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));\n  }\n} catch (e) {}\n\n// Set sensible defaults if file is missing\nif (!config.targetTitles) config.targetTitles = [\"Java Backend Engineer\", \"Spring Boot Developer\", \"Java Developer\", \"Backend Developer\", \"SDE-1\", \"Software Engineer\"];\nif (!config.locations) config.locations = [\"India\", \"Remote\"];\nif (config.remoteOnly === undefined) config.remoteOnly = false;\nif (!config.maxJobsPerRun) config.maxJobsPerRun = 25;\nif (!config.postedWithinDays) config.postedWithinDays = 7;\nif (!config.minMatchScore) config.minMatchScore = 50;\nif (!config.excludeCompanies) config.excludeCompanies = [];\n\nreturn [{ json: config }];"
+      },
+      "id": "load-config-id",
+      "name": "Load Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst config = $('Load Config').first().json;\nconst input = $input.first()?.json || {};\n\n// Load resume text\nlet resumeText = input.resumeText || input.Resume || \"\";\nif (!resumeText) {\n  try {\n    const dataDir = process.env.DATA_DIR || (process.platform === 'win32' ? 'D:/AI Job Automation' : '/data');\n    const resumePath = path.join(dataDir, \"Resume/Resume.txt\");\n    if (fs.existsSync(resumePath)) {\n      resumeText = fs.readFileSync(resumePath, 'utf8');\n    }\n  } catch (e) {}\n}\n\nif (!resumeText) {\n  resumeText = \"Md Sadique Amin. Email: mdsadiqueamin721786@gmail.com. Phone: +91 9318302850. Java Backend Engineer specializing in Spring Boot, Kafka, MySQL, and Docker.\";\n}\n\nreturn [{\n  json: {\n    resumeText,\n    config\n  }\n}];"
+      },
+      "id": "parse-input-params-id",
+      "name": "Parse Input Params",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation]</b> Job search pipeline started.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-start-id",
+      "name": "Telegram: Workflow Started",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        600,
+        80
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.OLLAMA_MODEL || 'qwen2.5:7b-instruct' }}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Extract the following from this resume text and return ONLY valid JSON (no markdown, no commentary) with this exact schema: {\"name\": \"string\", \"email\": \"string\", \"phone\": \"string\", \"skills\": [\"string\"], \"programmingLanguages\": [\"string\"], \"frameworks\": [\"string\"], \"libraries\": [\"string\"], \"databases\": [\"string\"], \"cloudPlatforms\": [\"string\"], \"aiSkills\": [\"string\"], \"devOpsSkills\": [\"string\"], \"yearsExperience\": number, \"education\": [\"string\"], \"projects\": [\"string\"], \"certifications\": [\"string\"], \"keywords\": [\"string\"], \"github\": \"string\", \"linkedin\": \"string\", \"summary\": \"string\"}.\n\nResume text:\n{{ $json.resumeText }}"
+            }
+          ]
+        },
+        "options": {
+          "system": "You are a precise resume-parsing engine for a recruitment automation system. Always respond with a single valid JSON object matching the requested schema and nothing else.",
+          "num_predict": 2000,
+          "temperature": 0,
+          "format": "json"
+        }
+      },
+      "id": "ai-parse-resume-id",
+      "name": "AI Parse Resume",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        800,
+        80
+      ],
+      "retryOnFail": true,
+      "maxRetries": 3,
+      "delayBetweenRetries": 10000,
+      "credentials": {
+        "ollamaApi": {
+          "id": "ollama-local-cred",
+          "name": "Local Ollama Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation]</b> Resume parsed successfully. Candidate: <b>{{ $json.name }}</b>",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-resume-parsed-id",
+      "name": "Telegram: Resume Analysed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        80
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Load Config').first().json;\nconst aiRaw = $input.first().json.text || $input.first().json.output || '';\n\nfunction extractJson(text) {\n  const cleaned = String(text).replace(/```json/gi, '').replace(/```/g, '').trim();\n  const start = cleaned.indexOf('{');\n  const end = cleaned.lastIndexOf('}');\n  if (start === -1 || end === -1) return {};\n  try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (e) { return {}; }\n}\n\nconst parsed = extractJson(aiRaw);\nconst candidate = {\n  name: parsed.name || \"Md Sadique Amin\",\n  email: parsed.email || \"mdsadiqueamin721786@gmail.com\",\n  phone: parsed.phone || \"+91 9318302850\",\n  skills: Array.isArray(parsed.skills) ? parsed.skills : [],\n  programmingLanguages: Array.isArray(parsed.programmingLanguages) ? parsed.programmingLanguages : [],\n  frameworks: Array.isArray(parsed.frameworks) ? parsed.frameworks : [],\n  libraries: Array.isArray(parsed.libraries) ? parsed.libraries : [],\n  databases: Array.isArray(parsed.databases) ? parsed.databases : [],\n  cloudPlatforms: Array.isArray(parsed.cloudPlatforms) ? parsed.cloudPlatforms : [],\n  aiSkills: Array.isArray(parsed.aiSkills) ? parsed.aiSkills : [],\n  devOpsSkills: Array.isArray(parsed.devOpsSkills) ? parsed.devOpsSkills : [],\n  yearsExperience: parsed.yearsExperience || 0,\n  education: Array.isArray(parsed.education) ? parsed.education : [],\n  topProjects: Array.isArray(parsed.projects) ? parsed.projects : [],\n  certifications: Array.isArray(parsed.certifications) ? parsed.certifications : [],\n  keywords: Array.isArray(parsed.keywords) ? parsed.keywords : [],\n  github: parsed.github || 'https://github.com/sadiqueamin',\n  linkedin: parsed.linkedin || 'https://linkedin.com/in/md-sadique-amin',\n  summary: parsed.summary || 'Java Backend Engineer & Spring Boot Developer.',\n  targetTitles: config.targetTitles || [],\n  locations: config.locations || [],\n  remoteOnly: config.remoteOnly === true,\n  postedWithinDays: config.postedWithinDays || 7,\n  minMatchScore: config.minMatchScore || 50,\n  excludeCompanies: config.excludeCompanies || [],\n  maxJobsPerRun: config.maxJobsPerRun || 25\n};\n\nreturn [{ json: candidate }];"
+      },
+      "id": "parse-candidate-profile-id",
+      "name": "Parse Candidate Profile",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://remoteok.com/api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (compatible; JobSearchAutomation/1.0)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "remoteok-fetch-id",
+      "name": "Fetch RemoteOK Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        -400
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              },
+              "rightValue": ""
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "remoteok-filter-id",
+      "name": "Filter Valid RemoteOK Rows",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1650,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "title",
+              "value": "={{ $json.position }}",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "company",
+              "value": "={{ $json.company }}",
+              "type": "string"
+            },
+            {
+              "id": "n3",
+              "name": "jobLocation",
+              "value": "={{ $json.location }}",
+              "type": "string"
+            },
+            {
+              "id": "n4",
+              "name": "jobUrl",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "n5",
+              "name": "source",
+              "value": "RemoteOK",
+              "type": "string"
+            },
+            {
+              "id": "n6",
+              "name": "description",
+              "value": "={{ $json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "n7",
+              "name": "tags",
+              "value": "={{ Array.isArray($json.tags) ? $json.tags.join(\", \") : \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "n8",
+              "name": "created",
+              "value": "={{ new Date($json.date).toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "remoteok-normalize-id",
+      "name": "Normalize RemoteOK Job",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1850,
+        -400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://boards-api.greenhouse.io/v1/boards/stripe/jobs?content=true",
+        "options": {}
+      },
+      "id": "greenhouse-fetch-id",
+      "name": "Fetch Greenhouse Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        -250
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.jobs || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.title || \"\",\n    company: \"Stripe\",\n    jobLocation: j.location?.name || \"Remote\",\n    jobUrl: j.absolute_url || \"\",\n    source: \"Greenhouse (Stripe)\",\n    description: j.content || \"\",\n    tags: \"\",\n    created: j.updated_at || \"\"\n  }\n}));"
+      },
+      "id": "greenhouse-normalize-id",
+      "name": "Normalize Greenhouse Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        -250
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.lever.co/v0/postings/lever?mode=json",
+        "options": {}
+      },
+      "id": "lever-fetch-id",
+      "name": "Fetch Lever Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        -100
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.all().map(i => i?.json).filter(Boolean); } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.title || \"\",\n    company: \"Lever\",\n    jobLocation: j.categories?.location || \"Remote\",\n    jobUrl: j.hostedUrl || \"\",\n    source: \"Lever (Lever)\",\n    description: j.description || \"\",\n    tags: j.categories?.team || \"\",\n    created: j.createdAt ? new Date(j.createdAt).toISOString() : \"\"\n  }\n}));"
+      },
+      "id": "lever-normalize-id",
+      "name": "Normalize Lever Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.ashbyhq.com/v1/jobs?boardToken=sentry",
+        "options": {}
+      },
+      "id": "ashby-fetch-id",
+      "name": "Fetch Ashby Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        50
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.jobs || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.title || \"\",\n    company: \"Sentry\",\n    jobLocation: j.location || \"Remote\",\n    jobUrl: j.jobUrl || \"\",\n    source: \"Ashby (Sentry)\",\n    description: j.description || \"\",\n    tags: \"\",\n    created: j.publishedAt || \"\"\n  }\n}));"
+      },
+      "id": "ashby-normalize-id",
+      "name": "Normalize Ashby Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.adzuna.com/v1/api/jobs/in/search/1?app_id={{ $env.ADZUNA_APP_ID }}&app_key={{ $env.ADZUNA_API_KEY }}&what={{ encodeURIComponent($('Parse Candidate Profile').first().json.targetTitles.join(' OR ')) }}&results_per_page=20&content-type=application/json",
+        "options": {}
+      },
+      "id": "adzuna-fetch-id",
+      "name": "Fetch Adzuna Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        200
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.results || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.title || \"\",\n    company: j.company?.display_name || \"Unknown\",\n    jobLocation: j.location?.display_name || \"India\",\n    jobUrl: j.redirect_url || \"\",\n    source: \"Adzuna\",\n    description: j.description || \"\",\n    tags: (j.category?.label || \"\") + \", \" + (j.category?.tag || \"\"),\n    created: j.created || \"\"\n  }\n}));"
+      },
+      "id": "adzuna-normalize-id",
+      "name": "Normalize Adzuna Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://jooble.org/api/{{ $env.JOOBLE_API_KEY }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "keywords",
+              "value": "={{ $('Parse Candidate Profile').first().json.targetTitles.join(' OR ') }}"
+            },
+            {
+              "name": "location",
+              "value": "India"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "jooble-fetch-id",
+      "name": "Fetch Jooble Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        350
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.jobs || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.title || \"\",\n    company: j.company || \"Unknown\",\n    jobLocation: j.location || \"India\",\n    jobUrl: j.link || \"\",\n    source: \"Jooble\",\n    description: j.snippet || \"\",\n    tags: \"\",\n    created: j.updated ? new Date(j.updated).toISOString() : \"\"\n  }\n}));"
+      },
+      "id": "jooble-normalize-id",
+      "name": "Normalize Jooble Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://jsearch.p.rapidapi.com/search?query={{ encodeURIComponent($('Parse Candidate Profile').first().json.targetTitles.join(' OR ') + ' in India') }}&num_pages=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-RapidAPI-Key",
+              "value": "={{ $env.JSEARCH_API_KEY }}"
+            },
+            {
+              "name": "X-RapidAPI-Host",
+              "value": "jsearch.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "jsearch-fetch-id",
+      "name": "Fetch JSearch Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        500
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.data || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.job_title || \"\",\n    company: j.employer_name || \"Unknown\",\n    jobLocation: j.job_city || j.job_country || \"India\",\n    jobUrl: j.job_apply_link || \"\",\n    source: \"JSearch\",\n    description: j.job_description || \"\",\n    tags: \"\",\n    created: j.job_posted_at_datetime_utc || \"\"\n  }\n}));"
+      },
+      "id": "jsearch-normalize-id",
+      "name": "Normalize JSearch Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.smartrecruiters.com/v1/companies/razorpay/postings",
+        "options": {}
+      },
+      "id": "smartrecruiters-fetch-id",
+      "name": "Fetch SmartRecruiters Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        650
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.content || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.name || \"\",\n    company: \"Razorpay\",\n    jobLocation: j.location?.city || \"Remote\",\n    jobUrl: `https://careers.smartrecruiters.com/Razorpay/${j.id}`,\n    source: \"SmartRecruiters (Razorpay)\",\n    description: j.customField?.find(f => f.fieldId === 'description')?.value || j.name || \"\",\n    tags: j.department?.label || \"\",\n    created: j.releasedDate || \"\"\n  }\n}));"
+      },
+      "id": "smartrecruiters-normalize-id",
+      "name": "Normalize SmartRecruiters Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://wetransfer.recruitee.com/api/2/jobs",
+        "options": {}
+      },
+      "id": "recruitee-fetch-id",
+      "name": "Fetch Recruitee Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1450,
+        800
+      ],
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxRetries": 2,
+      "delayBetweenRetries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "let input = [];\ntry { input = $input.first()?.json?.jobs || []; } catch(e) {}\nreturn input.map(j => ({\n  json: {\n    title: j.title || \"\",\n    company: \"WeTransfer\",\n    jobLocation: j.location || \"Remote\",\n    jobUrl: j.careers_url || \"\",\n    source: \"Recruitee (WeTransfer)\",\n    description: j.description || \"\",\n    tags: j.tags?.join(\", \") || \"\",\n    created: j.published_at || \"\"\n  }\n}));"
+      },
+      "id": "recruitee-normalize-id",
+      "name": "Normalize Recruitee Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1650,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const candidate = $('Parse Candidate Profile').first()?.json || {};\nconst locations = (candidate.locations || []).map(l => String(l).toLowerCase());\nconst excludeCompanies = (candidate.excludeCompanies || []).map(c => String(c).toLowerCase());\nconst postedWithinDays = Number(candidate.postedWithinDays) || 7;\nconst remoteOnly = candidate.remoteOnly === true;\n\nlet rawJobs = [];\n\nconst sources = [\n  { name: 'RemoteOK', node: 'Normalize RemoteOK Job' },\n  { name: 'Greenhouse', node: 'Normalize Greenhouse Jobs' },\n  { name: 'Lever', node: 'Normalize Lever Jobs' },\n  { name: 'Ashby', node: 'Normalize Ashby Jobs' },\n  { name: 'Adzuna', node: 'Normalize Adzuna Jobs' },\n  { name: 'Jooble', node: 'Normalize Jooble Jobs' },\n  { name: 'JSearch', node: 'Normalize JSearch Jobs' },\n  { name: 'SmartRecruiters', node: 'Normalize SmartRecruiters Jobs' },\n  { name: 'Recruitee', node: 'Normalize Recruitee Jobs' }\n];\n\nconst counts = {};\n\nfor (const src of sources) {\n  let items = [];\n  try {\n    const allItems = $(src.node).all();\n    if (Array.isArray(allItems)) {\n      items = allItems.map(i => i?.json).filter(Boolean);\n    }\n  } catch (e) {}\n  counts[src.name] = items.length;\n  rawJobs = rawJobs.concat(items);\n}\n\n// 1. Deduplicate by Job URL in this run\nconst uniqueJobsMap = new Map();\nfor (const job of rawJobs) {\n  if (job.jobUrl) {\n    uniqueJobsMap.set(job.jobUrl, job);\n  }\n}\n\nconst uniqueJobs = Array.from(uniqueJobsMap.values());\n\n// 2. Apply Filters (Exclusions, Date limits, Locations, Title Match)\nconst now = new Date();\nconst filteredJobs = uniqueJobs.filter(j => {\n  // Check company exclusion\n  const comp = String(j.company || '').toLowerCase();\n  if (excludeCompanies.some(ex => comp.includes(ex))) return false;\n  \n  // Check Date Limits\n  if (j.created) {\n    const createdDate = new Date(j.created);\n    if (!isNaN(createdDate.getTime())) {\n      const diffTime = Math.abs(now - createdDate);\n      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));\n      if (diffDays > postedWithinDays) return false;\n    }\n  }\n  \n  // Check Title\n  const title = String(j.title || '').toLowerCase();\n  const targetTitles = (candidate.targetTitles || []).map(t => String(t).toLowerCase());\n  const matchesTitle = targetTitles.length === 0 || targetTitles.some(t => title.includes(t));\n  if (!matchesTitle) return false;\n  \n  // Check Location\n  const loc = String(j.jobLocation || '').toLowerCase();\n  if (remoteOnly) {\n    const isRemote = loc.includes('remote') || j.source === 'RemoteOK';\n    if (!isRemote) return false;\n  }\n  \n  if (locations.length > 0) {\n    const matchesLoc = locations.some(l => loc.includes(l) || (l === 'remote' && loc.includes('remote')));\n    if (!matchesLoc) return false;\n  }\n  \n  return true;\n});\n\nreturn [{\n  json: {\n    jobs: filteredJobs,\n    counts: counts,\n    totalDiscovered: rawJobs.length,\n    totalFiltered: filteredJobs.length\n  }\n}];"
+      },
+      "id": "merge-filter-jobs-id",
+      "name": "Merge & Filter Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=📊 <b>Job Crawling Summary</b>\n- RemoteOK: {{ $json.counts.RemoteOK }}\n- Greenhouse: {{ $json.counts.Greenhouse }}\n- Lever: {{ $json.counts.Lever }}\n- Ashby: {{ $json.counts.Ashby }}\n- Adzuna: {{ $json.counts.Adzuna }}\n- Jooble: {{ $json.counts.Jooble }}\n- JSearch: {{ $json.counts.JSearch }}\n- SmartRecruiters: {{ $json.counts.SmartRecruiters }}\n- Recruitee: {{ $json.counts.Recruitee }}\n\n<b>Total Discovered:</b> {{ $json.totalDiscovered }}\n<b>Filtered (Criteria Fit):</b> {{ $json.totalFiltered }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-jobs-found-id",
+      "name": "Telegram: Jobs Found",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2300,
+        -80
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.first().json.jobs.map(j => ({ json: j }));"
+      },
+      "id": "split-jobs-list-id",
+      "name": "Split Jobs List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2900,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ $env.PYTHON_CMD || 'python' }} -c \"import sqlite3, json, os; db = os.path.join(os.environ.get('DATA_DIR', '/data'), 'Database/jobs.db'); conn=sqlite3.connect(db); c=conn.cursor(); c.execute('SELECT job_url FROM jobs'); urls=[r[0] for r in c.fetchall()]; conn.close(); print(json.dumps(urls))\" "
+      },
+      "id": "get-existing-urls-id",
+      "name": "Get Existing URLs",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2300,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allJobs = $('Merge & Filter Jobs').first().json.jobs || [];\nlet existingUrls = [];\ntry {\n  existingUrls = JSON.parse($('Get Existing URLs').first().json.stdout);\n} catch (e) {}\nconst existingSet = new Set(existingUrls);\nconst newJobs = allJobs.filter(j => !existingSet.has(j.jobUrl));\nreturn [{ json: { jobs: newJobs } }];"
+      },
+      "id": "filter-existing-jobs-id",
+      "name": "Filter Existing Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2500,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.jobs.length }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-new-jobs-id",
+      "name": "Check New Jobs Exist",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2700,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "<b>[Job Automation]</b> No new jobs found in today's search.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-no-jobs-id",
+      "name": "Telegram: No Jobs Found",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2900,
+        -20
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.OLLAMA_MODEL || 'qwen2.5:7b-instruct' }}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Candidate Skills: {{ $('Parse Candidate Profile').first().json.skills.join(', ') }}\nCandidate Experience: {{ $('Parse Candidate Profile').first().json.yearsExperience }} years\nCandidate Summary: {{ $('Parse Candidate Profile').first().json.summary }}\n\nJob Title: {{ $json.title }}\nCompany: {{ $json.company }}\nJob Location: {{ $json.jobLocation }}\nJob Description: {{ $json.description }}\n\nEvaluate the fit of the candidate for this job using the following weighted rubric:\n1. Skills Overlap (40%): Fit between candidate skills and job requirements.\n2. Experience Match (20%): Fit between candidate years of experience and job needs.\n3. Location/Remote Fit (20%): Remote alignment and location preferences.\n4. Role Fit (20%): Title alignment.\n\nCalculate a final score (0-100) using this rubric. Identify the skill gap (skills in job but missing in resume) and contact email if mentioned.\n\nReturn ONLY a valid JSON object matching this schema:\n{\n  \"matchScore\": number,\n  \"matchedSkills\": \"string list of matching skills\",\n  \"skillGap\": \"string list of missing skills\",\n  \"experienceMatch\": \"High / Medium / Low\",\n  \"locationMatch\": \"Yes / No\",\n  \"remoteMatch\": \"Yes / No\",\n  \"salaryMatch\": \"N/A or detail\",\n  \"priorityScore\": number,\n  \"recommendation\": \"Apply / Skip / Review\",\n  \"matchSummary\": \"1-2 sentence summary of fit\",\n  \"contactEmail\": \"email address if found in job description, otherwise blank\"\n}"
+            }
+          ]
+        },
+        "options": {
+          "system": "You are a recruitment screening engine. Evaluate candidate fit strictly according to the provided rubric and return ONLY valid JSON.",
+          "num_predict": 1000,
+          "temperature": 0.1,
+          "format": "json"
+        }
+      },
+      "id": "score-rank-jobs-id",
+      "name": "Score & Rank Jobs",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        2900,
+        180
+      ],
+      "retryOnFail": true,
+      "maxRetries": 3,
+      "delayBetweenRetries": 10000,
+      "credentials": {
+        "ollamaApi": {
+          "id": "ollama-local-cred",
+          "name": "Local Ollama Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const job = item.json;\n  function extractJson(text) {\n    const cleaned = String(text).replace(/```json/gi, '').replace(/```/g, '').trim();\n    const start = cleaned.indexOf('{');\n    const end = cleaned.lastIndexOf('}');\n    if (start === -1 || end === -1) return {};\n    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (e) { return {}; }\n  }\n  const parsed = extractJson(job.text || job.output || '');\n  const originalJob = $('Split Jobs List').all()[item.index].json;\n  return {\n    json: {\n      ...originalJob,\n      matchScore: parsed.matchScore || 0,\n      matchedSkills: parsed.matchedSkills || '',\n      tailored: parsed\n    }\n  };\n});"
+      },
+      "id": "parse-scoring-results-id",
+      "name": "Parse Scoring Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3100,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.matchScore }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": "={{ $('Parse Candidate Profile').first().json.minMatchScore }}"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "filter-min-score-id",
+      "name": "Filter By Minimum Score",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        3300,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "maxItems": "={{ $('Load Config').first().json.maxJobsPerRun || 25 }}"
+      },
+      "id": "limit-jobs-id",
+      "name": "Limit Jobs per Run",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        3500,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation]</b> Found <b>{{ $input.all().length }}</b> high-match new jobs (>= {{ $('Parse Candidate Profile').first().json.minMatchScore }}%). Starting tailoring...",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-high-match-id",
+      "name": "Telegram: High Match Jobs",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3700,
+        180
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "loop-matched-jobs-id",
+      "name": "Loop Over Matched Jobs",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        3900,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $env.OLLAMA_MODEL || 'qwen2.5:7b-instruct' }}"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Candidate Summary: {{ $('Parse Candidate Profile').first().json.summary }}\nCandidate Skills: {{ $('Parse Candidate Profile').first().json.skills.join(', ') }}\nCandidate Experience: {{ $('Parse Candidate Profile').first().json.yearsExperience }} years\n\nJob Title: {{ $json.title }}\nCompany: {{ $json.company }}\nJob Description: {{ $json.description }}\n\nTailor the candidate's resume highlights and draft cover letter components. Return ONLY JSON matching this schema:\n{\n  \"tailoredBullets\": [\"bullet 1\", \"bullet 2\", \"bullet 3\"],\n  \"coverLetterOpener\": \"cover letter opening paragraph\"\n}"
+            }
+          ]
+        },
+        "options": {
+          "system": "You are a career development coach. Create resume bullets and cover letter elements strictly tailored to this company and role.",
+          "num_predict": 1000,
+          "temperature": 0.4,
+          "format": "json"
+        }
+      },
+      "id": "ai-tailor-application-notes-id",
+      "name": "AI Tailor Application Notes",
+      "type": "@n8n/n8n-nodes-langchain.ollama",
+      "typeVersion": 1,
+      "position": [
+        4100,
+        50
+      ],
+      "retryOnFail": true,
+      "maxRetries": 3,
+      "delayBetweenRetries": 10000,
+      "credentials": {
+        "ollamaApi": {
+          "id": "ollama-local-cred",
+          "name": "Local Ollama Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const currentJob = $('Loop Over Matched Jobs').item.json;\nconst aiRaw = $input.item.json.text || $input.item.json.output || \"\";\n\nfunction extractJson(text) {\n  const cleaned = String(text).replace(/```json/gi, '').replace(/```/g, '').trim();\n  const start = cleaned.indexOf('{');\n  const end = cleaned.lastIndexOf('}');\n  if (start === -1 || end === -1) return {};\n  try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (e) { return {}; }\n}\n\nconst tailoredData = extractJson(aiRaw);\nconst candidate = $('Parse Candidate Profile').first().json;\n\nconst combinedTailored = {\n  ...currentJob.tailored,\n  tailoredBullets: tailoredData.tailoredBullets || [],\n  coverLetterOpener: tailoredData.coverLetterOpener || \"\"\n};\n\nreturn [{\n  json: {\n    candidate: candidate,\n    job: currentJob,\n    tailored: combinedTailored\n  }\n}];"
+      },
+      "id": "build-crm-row-id",
+      "name": "Build CRM Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4300,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ $env.PYTHON_CMD || 'python' }} \"{{ $env.DATA_DIR || '/data' }}/Config/process_job.py\"",
+        "sendStdin": true,
+        "stdinProperty": "={{ JSON.stringify($json) }}"
+      },
+      "id": "execute-local-processor-id",
+      "name": "Execute Local Processor",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        4500,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation]</b> Tailored resume and cover letter generated for <b>{{ $json.job.title }}</b> at <b>{{ $json.job.company }}</b>.\nPriority Match: <b>{{ $json.tailored.priorityScore }}</b>",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-resume-tailored-id",
+      "name": "Telegram: Resume Tailored",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4700,
+        50
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.SMTP_USER }}",
+        "subject": "=Tailored Application Package: {{ $json.job.title }} at {{ $json.job.company }}",
+        "html": "=Hi,<br><br>Here is your tailored application package. The files have been written on the host.<br><br><b>Cold Email Draft:</b><br><pre>Subject: Application for {{ $json.job.title }} - {{ $json.candidate.name.toUpperCase() }}\n\nDear Hiring Team at {{ $json.job.company }},\n\n{{ $json.tailored.coverLetterOpener }}\n\nBest regards,\n{{ $json.candidate.name }}</pre>",
+        "options": {}
+      },
+      "id": "smtp-send-notification-id",
+      "name": "SMTP: Send Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        4900,
+        50
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-id",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation]</b> Workflow execution completed. CRM updated and follow-ups scheduled.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-workflow-finished-id",
+      "name": "Telegram: Workflow Finished",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4100,
+        300
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger-id",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation] ERROR</b>: Node <code>{{ $json.execution.error.node.name }}</code> failed.<br>Message: <code>{{ $json.execution.error.message }}</code>",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-error-notifier-id",
+      "name": "Telegram: Error Notifier",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.SMTP_USER }}",
+        "subject": "=Workflow Alert: Automation Error",
+        "html": "=Hi,<br><br>The job search workflow encountered an error at node <b>{{ $json.execution.error.node.name }}</b>.<br><br><b>Error Message:</b><br><pre>{{ $json.execution.error.message }}</pre>",
+        "options": {}
+      },
+      "id": "smtp-error-notifier-id",
+      "name": "SMTP: Error Notifier",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        200,
+        520
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-id",
+          "name": "SMTP Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Manual Test": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Load Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Config": {
+      "main": [
+        [
+          {
+            "node": "Parse Input Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input Params": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Workflow Started",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Workflow Started": {
+      "main": [
+        [
+          {
+            "node": "AI Parse Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Parse Resume": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Resume Analysed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Resume Analysed": {
+      "main": [
+        [
+          {
+            "node": "Parse Candidate Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Candidate Profile": {
+      "main": [
+        [
+          {
+            "node": "Fetch RemoteOK Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Greenhouse Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Lever Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Ashby Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Adzuna Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Jooble Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch JSearch Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch SmartRecruiters Jobs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Recruitee Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch RemoteOK Jobs": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid RemoteOK Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid RemoteOK Rows": {
+      "main": [
+        [
+          {
+            "node": "Normalize RemoteOK Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize RemoteOK Job": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Greenhouse Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Greenhouse Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Greenhouse Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Lever Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lever Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lever Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Ashby Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Ashby Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Ashby Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Adzuna Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Adzuna Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Adzuna Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Jooble Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Jooble Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Jooble Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch JSearch Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize JSearch Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize JSearch Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch SmartRecruiters Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize SmartRecruiters Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SmartRecruiters Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recruitee Jobs": {
+      "main": [
+        [
+          {
+            "node": "Normalize Recruitee Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Recruitee Jobs": {
+      "main": [
+        [
+          {
+            "node": "Merge & Filter Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge & Filter Jobs": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Jobs Found",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Existing Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Existing Jobs": {
+      "main": [
+        [
+          {
+            "node": "Check New Jobs Exist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check New Jobs Exist": {
+      "main": [
+        [
+          {
+            "node": "Split Jobs List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Telegram: No Jobs Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Jobs List": {
+      "main": [
+        [
+          {
+            "node": "Score & Rank Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score & Rank Jobs": {
+      "main": [
+        [
+          {
+            "node": "Parse Scoring Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Scoring Results": {
+      "main": [
+        [
+          {
+            "node": "Filter By Minimum Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter By Minimum Score": {
+      "main": [
+        [
+          {
+            "node": "Limit Jobs per Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit Jobs per Run": {
+      "main": [
+        [
+          {
+            "node": "Telegram: High Match Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: High Match Jobs": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Matched Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Matched Jobs": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Workflow Finished",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Tailor Application Notes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Tailor Application Notes": {
+      "main": [
+        [
+          {
+            "node": "Build CRM Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build CRM Row": {
+      "main": [
+        [
+          {
+            "node": "Execute Local Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Local Processor": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Resume Tailored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Resume Tailored": {
+      "main": [
+        [
+          {
+            "node": "SMTP: Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMTP: Send Notification": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Matched Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Error Notifier",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "SMTP: Error Notifier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "id": "1"
+}

@@ -1,0 +1,75 @@
+========================================================================
+PROJECT SUMMARY: LOCAL AI JOB SEARCH & APPLICATION TAILORING CRM
+========================================================================
+
+This project is a 100% local, containerized recruitment automation system. It runs n8n inside Docker on your Windows machine, executing a Python pipeline that integrates with the Google Gemini API to parse resumes, scrap job postings, score matches, log outcomes to SQLite and Excel CRM files, and write customized Word and PDF cover letters/resumes.
+
+All assets are saved locally on your computer at: D:\AI Job Automation\
+
+------------------------------------------------------------------------
+WORKSPACE FILES & DIRECTORY STRUCTURE
+------------------------------------------------------------------------
+
+Developer Workspace (d:\Temp\automation\):
+----------------------------------------
+1. Dockerfile
+   - Builds custom n8n container starting from node:20-bookworm-slim.
+   - Instamps Python 3, pip, and compilation utilities.
+2. docker-compose.yml
+   - Configures the n8n container with port mapping 5678.
+   - Runs n8n as root inside the container to avoid permissions errors.
+   - Passes Telegram, SMTP, and Gemini API keys as environment variables.
+   - Mounts D:\AI Job Automation on the host to /data inside the container.
+3. requirements.txt
+   - Lists Python modules installed inside the container: python-docx, fpdf2, openpyxl.
+4. process_job.py
+   - Core Python processor which executes inside the container.
+   - Saves jobs to SQLite jobs.db and formats rows in Excel JobTracker.xlsx.
+   - Compiles resumes and cover letters in DOCX and PDF formats.
+5. AI Job Search_ Resume → Scored Job Matches.json
+   - n8n workflow file imported into n8n.
+6. README.md
+   - Markdown project guide containing setup steps and mermaid diagrams.
+7. PROJECT_SUMMARY.txt
+   - This documentation file.
+
+Production Directory (D:\AI Job Automation\):
+-------------------------------------------
+- Resume/Resume.txt             <-- Place your original master resume text here.
+- Config/config.json            <-- Target job titles and preferred locations.
+- Config/process_job.py         <-- Executable script run by n8n.
+- Config/workflow.json          <-- Copy of n8n workflow JSON definition.
+- Database/jobs.db              <-- SQLite database storing candidates & jobs.
+- Excel/JobTracker.xlsx         <-- Styled Excel sheet log (clickable links, status).
+- TailoredResume/               <-- Tailored resume documents (.docx and .pdf).
+- CoverLetters/                 <-- Tailored cover letters and cold email drafts.
+- Logs/automation.log           <-- System activity logs.
+
+------------------------------------------------------------------------
+CRM SPECIFICATIONS
+------------------------------------------------------------------------
+
+SQLite Schema (jobs.db):
+- Table `candidate_profile`: Stores parsed skills, experience, and contact links.
+- Table `jobs`: Stores URL, company, scores (Match, Priority), gaps, and tailored texts.
+
+Excel CRM Layout (JobTracker.xlsx):
+- Navy header formatting, Segoe UI font, alternating white and gray row fills.
+- Clickable blue underlined URL links.
+- Columns: Date, Job Title, Company, Location, Source, Job URL, Match Score, Matched Skills, Priority Score, Match Summary, Tailored Bullets, Cover Letter Opener, Status.
+
+------------------------------------------------------------------------
+SETUP AND RUNNING INSTRUCTIONS
+------------------------------------------------------------------------
+
+1. Open Docker Desktop.
+2. In PowerShell inside d:\Temp\automation\, run:
+   docker compose up -d
+3. Navigate to http://localhost:5678 in your browser.
+4. Log in using:
+   - Email: mdsadiqueamin721786@gmail.com
+   - Password: Sadique@123
+5. Open the pre-imported workflow "AI Job Search: Resume → Scored Job Matches".
+6. Set credentials for Gemini API, Telegram bot, and SMTP.
+7. Drop your resume in D:\AI Job Automation\Resume\Resume.txt and configure your job search details in D:\AI Job Automation\Config\config.json.
+8. Trigger the manual run on n8n to execute the job search and tailor your resumes!

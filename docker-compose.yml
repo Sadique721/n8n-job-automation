@@ -1,0 +1,42 @@
+
+
+services:
+  n8n:
+    build: .
+    container_name: n8n_job_automation
+    user: root
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_PORT=5678
+      - N8N_SECURE_COOKIE=false
+      # Security & Execution Config
+      - N8N_ENCRYPTION_KEY=job_search_encryption_key_2026
+      - N8N_TELEGRAM_CHAT_ID=${N8N_TELEGRAM_CHAT_ID}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      # Local Node modules permission
+      - NODE_FUNCTION_ALLOW_EXTERNAL=fs,path
+      # SMTP credentials
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      # Gemini API key
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # New Sources API keys
+      - ADZUNA_APP_ID=${ADZUNA_APP_ID}
+      - ADZUNA_API_KEY=${ADZUNA_API_KEY}
+      - JOOBLE_API_KEY=${JOOBLE_API_KEY}
+      - JSEARCH_API_KEY=${JSEARCH_API_KEY}
+      # Re-enable Execute Command node
+      - NODES_EXCLUDE=[]
+      # Allow access to environment variables in expressions
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # Allow node builtins in Code nodes
+      - NODE_FUNCTION_ALLOW_BUILTIN=fs,path
+    volumes:
+      # Mount host path for n8n configuration and workflows to persist database
+      - ./.n8n/.n8n:/root/.n8n
+      # Mount host path for SQLite, Excel, logs, and generated resumes/letters
+      - "D:/AI Job Automation:/data"

@@ -1,0 +1,180 @@
+{
+  "name": "Follow-Up Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger-id",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ $env.PYTHON_CMD || 'python' }} -c \"\nimport sqlite3, json, datetime, os\ndb = os.path.join(os.environ.get('DATA_DIR', '/data'), 'Database/jobs.db')\nconn = sqlite3.connect(db)\ncursor = conn.cursor()\ntoday = datetime.datetime.now().strftime('%Y-%m-%d')\ncursor.execute('''\n    SELECT job_url, title, company, contact_email, follow_up_count \n    FROM jobs \n    WHERE status = 'Applied' \n      AND next_follow_up_date <= ? \n      AND follow_up_count < 2 \n      AND contact_email IS NOT NULL \n      AND contact_email != ''\n''', (today,))\ncols = ['job_url', 'title', 'company', 'contact_email', 'follow_up_count']\nrows = [dict(zip(cols, r)) for r in cursor.fetchall()]\nconn.close()\nprint(json.dumps(rows))\n\" "
+      },
+      "id": "get-follow-ups-id",
+      "name": "Get Follow-Up Candidates",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return JSON.parse($input.first().json.stdout).map(r => ({ json: r }));"
+      },
+      "id": "split-candidates-id",
+      "name": "Split Candidates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $json.contact_email }}",
+        "ccEmail": "={{ $env.SMTP_USER }}",
+        "subject": "=Following up on my application: {{ $json.title }} at {{ $json.company }}",
+        "html": "=Dear Hiring Team at {{ $json.company }},<br><br>I hope this email finds you well.<br><br>I am following up on the application I submitted for the <b>{{ $json.title }}</b> position a few days ago.<br><br>I am very interested in this opportunity and wanted to confirm that my application materials were successfully received. Please let me know if you need any additional documents or details from my end.<br><br>Thank you for your time and consideration.<br><br>Sincerely,<br>Md Sadique Amin<br>mdsadiqueamin721786@gmail.com",
+        "options": {}
+      },
+      "id": "smtp-followup-email-id",
+      "name": "SMTP: Send Follow-up Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        600,
+        0
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "smtp-cred-id",
+          "name": "SMTP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "={{ $env.PYTHON_CMD || 'python' }} -c \"\nimport sys, json, sqlite3, datetime, os\npayload = json.load(sys.stdin)\ndb = os.path.join(os.environ.get('DATA_DIR', '/data'), 'Database/jobs.db')\nconn = sqlite3.connect(db)\ncursor = conn.cursor()\ntoday = datetime.datetime.now()\nnext_date = (today + datetime.timedelta(days=5)).strftime('%Y-%m-%d')\ncursor.execute('''\n    UPDATE jobs \n    SET follow_up_count = follow_up_count + 1, \n        next_follow_up_date = ? \n    WHERE job_url = ?\n''', (next_date, payload.get('job_url')))\nconn.commit()\nconn.close()\nprint('Updated')\n\" ",
+        "sendStdin": true,
+        "stdinProperty": "={{ JSON.stringify($json) }}"
+      },
+      "id": "update-followup-log-id",
+      "name": "Update Follow-up Log",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.N8N_TELEGRAM_CHAT_ID }}",
+        "text": "=<b>[Job Automation]</b> Follow-up email sent to <b>{{ $json.company }}</b> ({{ $json.contact_email }}) for <b>{{ $json.title }}</b> (Follow-up #{{ $json.follow_up_count + 1 }}).",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "telegram-followup-sent-id",
+      "name": "Telegram: Followup Sent",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        0
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "telegram-cred-id",
+          "name": "Telegram Bot Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Follow-Up Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Follow-Up Candidates": {
+      "main": [
+        [
+          {
+            "node": "Split Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Candidates": {
+      "main": [
+        [
+          {
+            "node": "SMTP: Send Follow-up Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SMTP: Send Follow-up Email": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Follow-up Log": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Followup Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "id": "2"
+}

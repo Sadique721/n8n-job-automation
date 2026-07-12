@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "start": "n8n start"
+  },
+  "dependencies": {
+    "n8n": "^2.28.4"
+  }
+}

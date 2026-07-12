@@ -1,0 +1,3 @@
+python-docx
+fpdf2
+openpyxl
