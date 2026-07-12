@@ -45,5 +45,5 @@ Write-Host "Starting n8n locally on port 5678..." -ForegroundColor Green
 Write-Host "Data directory is configured as: $env:DATA_DIR" -ForegroundColor Green
 Write-Host "Python environment path is: $env:PYTHON_CMD" -ForegroundColor Green
 
-# Start n8n
-n8n
+# Start n8n and redirect output to prevent terminal locks
+n8n > "$PSScriptRoot\..\n8n_console.log" 2>&1
