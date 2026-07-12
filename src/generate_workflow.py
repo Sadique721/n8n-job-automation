@@ -104,6 +104,7 @@ return [{
             "id": "telegram-start-id",
             "name": "Telegram: Workflow Started",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [600, 80],
             "credentials": {
@@ -161,6 +162,7 @@ return [{
             "id": "telegram-resume-parsed-id",
             "name": "Telegram: Resume Analysed",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [1000, 80],
             "credentials": {
@@ -741,6 +743,7 @@ return [{
             "id": "telegram-jobs-found-id",
             "name": "Telegram: Jobs Found",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [2300, -80],
             "credentials": {
@@ -830,6 +833,7 @@ return [{ json: { jobs: newJobs } }];"""
             "id": "telegram-no-jobs-id",
             "name": "Telegram: No Jobs Found",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [2900, -20],
             "credentials": {
@@ -938,6 +942,7 @@ return [{ json: { jobs: newJobs } }];"""
             "id": "telegram-high-match-id",
             "name": "Telegram: High Match Jobs",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [3700, 180],
             "credentials": {
@@ -1056,6 +1061,7 @@ return [{
             "id": "telegram-resume-tailored-id",
             "name": "Telegram: Resume Tailored",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [4700, 50],
             "credentials": {
@@ -1096,6 +1102,7 @@ return [{
             "id": "telegram-workflow-finished-id",
             "name": "Telegram: Workflow Finished",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [4100, 300],
             "credentials": {
@@ -1125,6 +1132,7 @@ return [{
             "id": "telegram-error-notifier-id",
             "name": "Telegram: Error Notifier",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [200, 400],
             "credentials": {
@@ -1384,6 +1392,7 @@ print('Updated')
             "id": "telegram-followup-sent-id",
             "name": "Telegram: Followup Sent",
             "type": "n8n-nodes-base.telegram",
+            "continueOnFail": True,
             "typeVersion": 1.2,
             "position": [1000, 0],
             "credentials": {
