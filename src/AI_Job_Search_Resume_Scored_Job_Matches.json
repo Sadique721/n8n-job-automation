@@ -729,7 +729,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map(item => {\n  const job = item.json;\n  function extractJson(text) {\n    const cleaned = String(text).replace(/```json/gi, '').replace(/```/g, '').trim();\n    const start = cleaned.indexOf('{');\n    const end = cleaned.lastIndexOf('}');\n    if (start === -1 || end === -1) return {};\n    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (e) { return {}; }\n  }\n  const parsed = extractJson(job.text || job.output || '');\n  const originalJob = $('Split Jobs List').all()[item.index].json;\n  return {\n    json: {\n      ...originalJob,\n      matchScore: parsed.matchScore || 0,\n      matchedSkills: parsed.matchedSkills || '',\n      tailored: parsed\n    }\n  };\n});"
+        "jsCode": "return $input.all().map((item, index) => {\n  const job = item.json;\n  function extractJson(text) {\n    const cleaned = String(text).replace(/```json/gi, '').replace(/```/g, '').trim();\n    const start = cleaned.indexOf('{');\n    const end = cleaned.lastIndexOf('}');\n    if (start === -1 || end === -1) return {};\n    try { return JSON.parse(cleaned.slice(start, end + 1)); } catch (e) { return {}; }\n  }\n  const parsed = extractJson(job.text || job.output || '');\n  const parentIndex = item.pairedItem?.item ?? index;\n  const originalJob = $('Split Jobs List').all()[parentIndex].json;\n  return {\n    json: {\n      ...originalJob,\n      matchScore: parsed.matchScore || 0,\n      matchedSkills: parsed.matchedSkills || '',\n      tailored: parsed\n    }\n  };\n});"
       },
       "id": "parse-scoring-results-id",
       "name": "Parse Scoring Results",
