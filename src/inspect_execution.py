@@ -5,11 +5,11 @@ import json
 # Detect database path dynamically (Docker vs Windows Host)
 db_path = '/root/.n8n/database.sqlite'
 if not os.path.exists(db_path):
-    local_path = os.path.join(os.path.dirname(__file__), '.n8n/.n8n/database.sqlite')
+    local_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../.n8n/.n8n/database.sqlite'))
     if os.path.exists(local_path):
         db_path = local_path
     else:
-        db_path = '.n8n/.n8n/database.sqlite'
+        db_path = '../.n8n/.n8n/database.sqlite'
 
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()

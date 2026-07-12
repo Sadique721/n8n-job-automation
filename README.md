@@ -101,17 +101,18 @@ Your developer workspace and host storage directories are organized as follows:
 
 ```text
 d:\Temp\automation\                # Developer Workspace
-├── .env.example                   # Environment configuration template
-├── .gitignore                     # Git tracking safety filter
-├── AI Job Search...json           # Main n8n Workflow JSON
-├── Follow_Up_Automation.json      # Follow-Up Scheduler JSON
 ├── Dockerfile                     # Custom n8n + Python environment builder
 ├── docker-compose.yml             # Docker composition script
-├── requirements.txt               # Python package dependencies
-├── process_job.py                 # Main Python CRM worker
-├── generate_workflow.py           # Programmatic n8n workflow compiler
-├── inspect_execution.py           # sqlite n8n runtime inspector
-└── test_process_job.py            # Unit testing suite
+├── README.md                      # Documentation (this file)
+└── src/                           # Source & Workflows Directory
+    ├── .env.example               # Environment configuration template
+    ├── AI Job Search...json       # Main n8n Workflow JSON
+    ├── Follow_Up_Automation.json  # Follow-Up Scheduler JSON
+    ├── requirements.txt           # Python package dependencies
+    ├── process_job.py             # Main Python CRM worker
+    ├── generate_workflow.py       # Programmatic n8n workflow compiler
+    ├── inspect_execution.py       # sqlite n8n runtime inspector
+    └── test_process_job.py        # Unit testing suite
 
 D:\AI Job Automation\              # Production Directory (Mounted on Host)
 ├── Resume/
@@ -155,7 +156,7 @@ Place your master resume at `D:\AI Job Automation\Resume\Resume.txt` and job tar
 ## 🧪 Automated Testing
 Verify the backend script modules locally using Python's standard `unittest` framework:
 ```powershell
-.\.venv\Scripts\python.exe -m unittest test_process_job.py
+.\.venv\Scripts\python.exe -m unittest src/test_process_job.py
 ```
 This tests:
 - SQLite database migrations & table creation.

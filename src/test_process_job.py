@@ -9,6 +9,8 @@ import json
 TEST_DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "test_data_dir"))
 os.environ["DATA_DIR"] = TEST_DATA_DIR
 
+sys.path.insert(0, os.path.dirname(__file__))
+
 import process_job
 
 class TestProcessJob(unittest.TestCase):

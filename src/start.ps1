@@ -21,10 +21,10 @@ if (Test-Path "$PSScriptRoot\.env") {
 
 # Enforce local settings
 $env:DATA_DIR = "D:/AI Job Automation"
-$env:PYTHON_CMD = "$PSScriptRoot\.venv\Scripts\python.exe"
+$env:PYTHON_CMD = "$PSScriptRoot\..\.venv\Scripts\python.exe"
 
 # Isolate n8n database and settings to local workspace folder
-$env:N8N_USER_FOLDER = "$PSScriptRoot\.n8n"
+$env:N8N_USER_FOLDER = "$PSScriptRoot\..\.n8n"
 
 # Allow executing commands and require modules in Code node
 $env:NODE_FUNCTION_ALLOW_EXTERNAL = "fs,path"
@@ -34,11 +34,11 @@ $env:NODES_EXCLUDE = "[]"
 $env:N8N_ENABLE_UNSAFE_CORE_NODES = "true"
 
 # Add virtual environment script directory to PATH
-$env:PATH = "$PSScriptRoot\.venv\Scripts;" + $env:PATH
+$env:PATH = "$PSScriptRoot\..\.venv\Scripts;" + $env:PATH
 
 # Create isolated .n8n folder if not exists
-if (!(Test-Path "$PSScriptRoot\.n8n")) {
-    New-Item -ItemType Directory -Path "$PSScriptRoot\.n8n" -Force | Out-Null
+if (!(Test-Path "$PSScriptRoot\..\.n8n")) {
+    New-Item -ItemType Directory -Path "$PSScriptRoot\..\.n8n" -Force | Out-Null
 }
 
 Write-Host "Starting n8n locally on port 5678..." -ForegroundColor Green
