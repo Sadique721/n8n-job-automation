@@ -32,6 +32,18 @@
 </tr>
 </table>
 
+<!-- ========== NEW: SYSTEM DIAGRAM SECTION ========== -->
+## 📊 System Architecture & Workflow
+
+```mermaid
+flowchart LR
+    A[Cron Trigger / Webhook] --> B[n8n Workflow Nodes]
+    B --> C[API Data Extraction]
+    C --> D[Transform Payload JSON]
+    D --> E[PostgreSQL DB Storage]
+    E --> F[Slack / Email Alerts]
+```
+
 ---
 
 <!-- ========== ANIMATED HEADER BANNER ========== -->
