@@ -1,11 +1,7 @@
 <!-- ========== NEW: ANIMATED WAVE HEADER ========== -->
-<p align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=0:22d3ee,100:8b5cf6&height=200&section=header&text=n8n-job-automation&fontSize=50&fontColor=ffffff&animation=fadeIn&fontAlignY=38&desc=n8n%20Workflow%20Job%20Automation%20Pipelines&descAlignY=60&descAlign=50" width="100%">
-</p>
-
 <!-- ========== NEW: TYPING ANIMATION INTRO ========== -->
 <p align="center">
-  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=3000&pause=500&color=22D3EE&center=true&vCenter=true&width=700&lines=Workflow Automation;API Integration;n8n Custom Nodes;CI%2fCD Automation" alt="Typing SVG">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&amp;weight=600&amp;size=24&amp;duration=3000&amp;pause=500&amp;color=22D3EE&amp;center=true&amp;vCenter=true&amp;width=700&amp;lines=Workflow%20Automation;API%20Integration;n8n%20Custom%20Nodes;CI%2fCD%20Automation" alt="Typing SVG">
 </p>
 
 <!-- ========== NEW: AUTHOR & ARCHITECT SECTION ========== -->
